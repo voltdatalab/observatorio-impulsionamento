@@ -25,6 +25,14 @@ ui <- dashboardPage(
              column(6,uiOutput('estados')),
              column(6,uiOutput('legenda')),
              column(6,uiOutput('cargos')),
+             column(6,uiOutput('politicos')),
+             column(6,
+                    textInput(inputId = "valor_custom",
+                              label = tags$div(icon("money-bill", class = "icons"),
+                                               'Valor mínimo', tags$br(),
+                                               tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Filtre por valor acima de R$1")),
+                              value = "",
+                              placeholder = "Apenas números")),
              column(6,
                     selectInput(inputId = "rede",
                                 label = tags$div(icon("share-alt-square", class = "icons"),
@@ -46,14 +54,14 @@ ui <- dashboardPage(
                                    start = "2022-08-04",  end = Sys.Date(),
                                    min = "2022-08-04",   max = Sys.Date(),
                                    format = "dd/mm/yyyy", weekstart = 0,
-                                   language = "pt",       separator = " a ",
+                                   language = "pt",       separator = " ATÉ ",
                                    width = NULL,          autoclose = TRUE),
              )
              
       ),
-      valueBox(textOutput("n_gastos"), "gastos apurados com a rubrica \"impulsionamento\"", icon = icon("list-alt")),
+      valueBox(textOutput("n_gastos"), "gastos com rubrica \"impulsionamento\"", icon = icon("list-alt")),
       valueBox(textOutput("n_candidatos"), "candidatos impulsionaram conteúdo", icon = icon("users")),
-      valueBox(textOutput("total_gasto"), "foram gastos com a rubrica \"impulsionamento\"", icon = icon("money-bill")),
+      valueBox(textOutput("total_gasto"), "gastos com rubrica \"impulsionamento\"", icon = icon("money-bill")),
       valueBox(textOutput("media_gasto"), "foi a média de gastos", icon = icon("grip-lines")),
       valueBox(textOutput("maior_gasto"), "foi o maior gasto", icon = icon("sort-up")),
       valueBox(textOutput("menor_gasto"), "foi o menor gasto", icon = icon("sort-down")),
@@ -81,7 +89,7 @@ server <- function(input, output) {
     #d$DT_DESPESA <- sub("^0+", "", d$DT_DESPESA)
     
     d <- d %>%
-      select(NM_CANDIDATO, SG_PARTIDO, DS_CARGO, DT_DESPESA,valor, SG_UF, ST_TURNO, NR_CNPJ_PRESTADOR_CONTA, DS_TIPO_FORNECEDOR, NM_FORNECEDOR, NM_FORNECEDOR_RFB, DS_ORIGEM_DESPESA, DS_DESPESA) %>%
+      select(NM_CANDIDATO, SG_PARTIDO, DS_CARGO, DT_DESPESA,valor, SG_UF, ST_TURNO, NR_CNPJ_PRESTADOR_CONTA, DS_TIPO_FORNECEDOR, NM_FORNECEDOR, NM_FORNECEDOR_RFB, DS_DESPESA, DS_ORIGEM_DESPESA) %>%
       rename(Candidato = NM_CANDIDATO, 
              Partido = SG_PARTIDO,
              Cargo = DS_CARGO,
@@ -107,7 +115,7 @@ server <- function(input, output) {
     selectizeInput(inputId = "uf",
                    #multiple = TRUE,
                    label = tags$div(icon("map-marker-alt", class = "icons"),
-                                    'Unidade Federativa', tags$br(), tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Escolha um ou mais UFs.")),
+                                    'UF', tags$br(), tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Escolha um cargo.")),
                    choices  = c("Todas", as.list(unique(d$UF))),
                    selected = "Todas")
   })
@@ -119,7 +127,7 @@ server <- function(input, output) {
     selectizeInput(inputId = "partido",
                    #multiple = TRUE,
                    label = tags$div(icon("paste", class = "icons"),
-                                    'Partidos', tags$br(), tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Escolha um ou mais partidos")),
+                                    'Partidos', tags$br(), tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Escolha um partido")),
                    choices  = c("Todos", as.list(unique(d$Partido))),
                    selected = "Todos")
   })
@@ -130,10 +138,25 @@ server <- function(input, output) {
     
     selectizeInput(inputId = "cargo",
                    #multiple = TRUE,
-                   label = tags$div(icon("user", class = "icons"),
+                   label = tags$div(icon("suitcase", class = "icons"),
                                     'Cargo', tags$br(), tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Escolha um ou mais cargos")),
                    choices  = c("Todos", as.list(unique(d$Cargo))),
                    selected = "Todos")
+  })
+  
+  output$politicos <- renderUI({
+    
+    d <- dt()
+    
+    d <- d %>% arrange(Candidato)
+    
+    selectizeInput(inputId = "politico",
+                   #multiple = TRUE,
+                   label = tags$div(icon("user", class = "icons"),
+                                    'Candidato', tags$br(), tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Escolha um candidato")),
+                   choices  = c("Todos", as.list(unique(d$Candidato))),
+                   selected = "Todos",
+                   multiple = FALSE)
   })
   
   
@@ -151,9 +174,16 @@ server <- function(input, output) {
     if(input$cargo != "Todos"){
       d <- d %>% filter(Cargo == input$cargo)
     }
+    if(input$politico != "Todos"){
+      d <- d %>% filter(Candidato == input$politico)
+    }
+    if(input$valor_custom != ""){
+      d <- d %>% filter(Valor >= input$valor_custom)
+    }
     if(input$rede != "Todas"){
       d <- d %>% filter(str_detect(Descrição, regex(input$rede, ignore_case = TRUE)) | 
-                         str_detect(`Nome do prestador`, regex(input$rede, ignore_case = TRUE))
+                         str_detect(`Nome do prestador`, regex(input$rede, ignore_case = TRUE)) | 
+                          str_detect(`Nome do fornecedor`, regex(input$rede, ignore_case = TRUE))
         )
     }
     
@@ -185,7 +215,7 @@ server <- function(input, output) {
     d <- d %>%
       summarise(t = sum(Valor))
     
-    paste0("R$", format(round(d$t, 1), big.mark=".", small.mark = ","))
+    paste0("R$", format(round(d$t, 0), big.mark=".", small.mark = ","))
   })
   
   output$media_gasto <- renderText({
@@ -194,7 +224,7 @@ server <- function(input, output) {
     d <- d %>%
       summarise(t = mean(Valor))
     
-    paste0("R$", format(round(d$t, 1), big.mark=".", small.mark = ","))
+    paste0("R$", format(round(d$t, 0), big.mark=".", small.mark = ","))
   })
   
   output$maior_gasto <- renderText({
@@ -203,7 +233,7 @@ server <- function(input, output) {
     d <- d %>%
       summarise(t = max(Valor))
     
-    paste0("R$", format(round(d$t, 1), big.mark=".", small.mark = ","))
+    paste0("R$", format(round(d$t, 0), big.mark=".", small.mark = ","))
   })
   
   output$menor_gasto <- renderText({
@@ -212,7 +242,7 @@ server <- function(input, output) {
     d <- d %>%
       summarise(t = min(Valor))
     
-    paste0("R$", format(round(d$t, 1), big.mark=".", small.mark = ","))
+    paste0("R$", format(round(d$t, 0), big.mark=".", small.mark = ","))
   })
   
   output$table <- DT::renderDT({
