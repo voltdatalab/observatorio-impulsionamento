@@ -1,0 +1,13 @@
+name: observatorio_impulsionamento
+title: observatorio_impulsionamento
+username:
+account: nucleojor
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 6903632
+bundleId: 6263128
+url: https://nucleojor.shinyapps.io/observatorio_impulsionamento/
+when: 1662131897.34621
+lastSyncTime: 1662131897.34622
+asMultiple: FALSE
+asStatic: FALSE
