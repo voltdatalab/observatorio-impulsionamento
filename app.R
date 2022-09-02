@@ -7,13 +7,18 @@ library(DT)
 
 #desabilita notação científica para números
 options(scipen = 999)
+options(shiny.sanitize.errors = FALSE)
 
 ui <- dashboardPage(
   dashboardHeader(),
   dashboardSidebar(collapsed = TRUE),
   dashboardBody(
     tags$head(
-      tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
+      tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
+      tags$style(type="text/css",
+                 ".shiny-output-error { visibility: hidden; }",
+                 ".shiny-output-error:before { visibility: hidden; }"
+      )
     ),
     fluidRow(
       column(4,  
