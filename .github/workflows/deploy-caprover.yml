@@ -1,0 +1,38 @@
+name: Deploy Observatório on main
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: observatorio-caprover-deploy
+  cancel-in-progress: false
+
+jobs:
+  trigger-rstudio-bootstrap:
+    name: Trigger CapRover RStudio bootstrap
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Trigger the restricted CapRover build webhook
+        env:
+          CAPROVER_DEPLOY_WEBHOOK: ${{ secrets.CAPROVER_RSTUDIO_DEPLOY_WEBHOOK }}
+        run: |
+          set -euo pipefail
+          test -n "$CAPROVER_DEPLOY_WEBHOOK"
+          status="$(curl --silent --show-error --output /tmp/caprover-response.json \
+            --write-out '%{http_code}' --request POST \
+            --header 'Content-Type: application/json' \
+            --data '{}' "$CAPROVER_DEPLOY_WEBHOOK")"
+          test "$status" = '200'
+          python3 - <<'PYTHON'
+          import json
+          from pathlib import Path
+          result = json.loads(Path('/tmp/caprover-response.json').read_text())
+          if result.get('status') != 100:
+              raise SystemExit(f"CapRover rejected the build trigger: {result.get('description', 'unknown error')}")
+          print('CapRover accepted the build trigger.')
+          PYTHON
