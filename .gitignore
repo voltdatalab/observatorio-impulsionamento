@@ -1,0 +1,15 @@
+# dados (o .db viaja por Release asset / volume, nunca pelo git)
+obseleitoral.db
+obseleitoral.db-shm
+obseleitoral.db-wal
+*.rds
+temp.zip
+*.csv
+*.zip
+
+# runtime / local
+logs/
+.RData
+.Rhistory
+.DS_Store
+.claude/
