@@ -53,7 +53,7 @@ ui <- dashboardPage(
       )
     ),
     fluidRow(
-      column(4, tags$div(class = "filters-card",
+      column(4, class = "col-filtros", tags$div(class = "filters-card",
              column(6,uiOutput('eleicao')),
              column(6,uiOutput('estados')),
              column(6,uiOutput('mun')),

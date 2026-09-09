@@ -274,6 +274,17 @@ button.dt-button, div.dt-button, a.dt-button, input.dt-button {
    RESPONSIVE
    ========================================================== */
 
+/* Viewport intermediário (ex.: iframe no nucleo.jor.br com as colunas do site
+   abertas, ~1200px): o par filtros (1/3) + KPIs (2/3) fica espremido. Quebra
+   para filtros em largura cheia (inputs em 3 colunas) sobre os KPIs (3 por
+   linha). Abaixo de 768px o Bootstrap já empilha tudo sozinho. */
+@media only screen and (min-width: 768px) and (max-width: 1280px) {
+  .col-filtros, .kpi-row { width: 100%; }
+  .filters-card > .col-sm-6 { width: 33.333%; }
+  .kpi-row > .col-sm-6 { width: 33.333%; }
+  .kpi-row .small-box { min-height: 0; }
+}
+
 @media only screen and (max-width: 600px) {
   #graf_ufs, #graf_politicos, #graf_politicos_top { min-height: 420px; }
   .kpi-row .inner > h3 { font-size: 1.9em; }
