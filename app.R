@@ -48,7 +48,8 @@ ui <- dashboardPage(
       column(6, offset = 3,
              tags$div(class="warning",
                       tags$p("⚠️ As descrições de impulsionamento são autodeclaradas e muitas vezes não é possível determinar o destino dos gastos sob essas rubricas. Veja as notas abaixo para esclarecimentos.")
-             )
+             ),
+             tags$div(class = "update-note", textOutput("ultima_atualizacao"))
       )
     ),
     fluidRow(
@@ -506,6 +507,19 @@ server <- function(input, output, session) {
       choices <- c("Todos", results$NM_CANDIDATO)
       updateSelectizeInput(session, "politico", choices = choices, server = TRUE)
     }
+  })
+
+  # Data mais recente de registro no TSE (DT_PRESTACAO_CONTAS) para o ano
+  # selecionado - é a data que vem nos próprios dados, não a hora do ETL.
+  # (DT_DESPESA não serve: tem datas futuras digitadas errado nas prestações.)
+  output$ultima_atualizacao <- renderText({
+    req(input$ano_eleicao)
+    m <- dbGetQuery(pool, sprintf(
+      "SELECT MAX(substr(DT_PRESTACAO_CONTAS,7,4) || '-' || substr(DT_PRESTACAO_CONTAS,4,2) || '-' || substr(DT_PRESTACAO_CONTAS,1,2)) AS m
+       FROM despesas WHERE ANO_ELEICAO = %d AND length(DT_PRESTACAO_CONTAS) = 10",
+      as.integer(input$ano_eleicao)))$m
+    if (is.null(m) || is.na(m)) return("")
+    paste0("Dados registrados no TSE até ", format(as_date(m), "%d/%m/%Y"))
   })
 
   ##########################################

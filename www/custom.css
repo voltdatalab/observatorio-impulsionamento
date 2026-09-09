@@ -90,10 +90,17 @@ tspan {
 }
 
 .warning {
-  margin: 16px auto 20px;
+  margin: 16px auto 8px;
   text-align: center;
   max-width: 100%;
   padding: 18px 20px;
+}
+
+.update-note {
+  text-align: center;
+  font-size: 0.85em;
+  color: #555555;
+  margin: 0 0 16px;
 }
 
 /* The card classes live on an inner div, not on the col-sm-* itself: side margins
