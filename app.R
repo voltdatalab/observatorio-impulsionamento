@@ -96,9 +96,9 @@ ui <- dashboardPage(
 
       )),
       column(8, class = "kpi-row",
-        valueBox(textOutput("n_gastos"), "gastos com rubrica \"impulsionamento\"", icon = icon("list-alt"), width = 6),
+        valueBox(textOutput("n_gastos"), "nº total de rubricas de \"impulsionamento\"", icon = icon("list-alt"), width = 6),
         valueBox(textOutput("n_candidatos"), "candidatos impulsionaram conteúdo", icon = icon("users"), width = 6),
-        valueBox(textOutput("total_gasto"), "gastos com rubrica \"impulsionamento\"", icon = icon("money-bill"), width = 6),
+        valueBox(textOutput("total_gasto"), "volume gasto com rubrica \"impulsionamento\"", icon = icon("money-bill"), width = 6),
         valueBox(textOutput("media_gasto"), "foi a média dos gastos", icon = icon("grip-lines"), width = 6),
         valueBox(textOutput("maior_gasto"), "foi o maior gasto", icon = icon("sort-up"), width = 6),
         valueBox(textOutput("pct_impulsionamento"), "do total gasto pelas campanhas foi com impulsionamento", icon = icon("percent"), width = 6)
