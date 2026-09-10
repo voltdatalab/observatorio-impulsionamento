@@ -92,6 +92,9 @@ ui <- dashboardPage(
                                        inline = TRUE,
                     )
              ),
+             column(12, style="margin: 6px 0 12px",
+                    downloadButton("download_dados", "Baixar dados filtrados (CSV)", class = "btn-download")
+             ),
 
       )),
       column(8, class = "kpi-row",
@@ -212,8 +215,8 @@ server <- function(input, output, session) {
     
     theme_foundation(base_size = base_size, base_family = base_family) +
       theme(
-        plot.background = element_rect(colour="#eeeeee", fill="#eeeeee"),
-        panel.background = element_rect(colour="#eeeeee", fill="#eeeeee"),
+        plot.background = element_rect(colour="#ffffff", fill="#ffffff"),
+        panel.background = element_rect(colour="#ffffff", fill="#ffffff"),
         text = element_text(colour = "#000000"),
         
         axis.text = element_text(size = rel(0.8), margin=margin(0,40,0,0)),
@@ -223,7 +226,7 @@ server <- function(input, output, session) {
         
         legend.text = element_text(size=rel(0.9), angle = 0),
         legend.title = element_blank(),
-        legend.key = element_rect(fill = "#eeeeee", colour = "#eeeeee", size = 0.5, linetype='dashed'),
+        legend.key = element_rect(fill = "#ffffff", colour = "#ffffff", size = 0.5, linetype='dashed'),
         legend.key.width = unit(0.6, "cm"),
         legend.position = "top",
         legend.justification = c(-0.05, 0),
@@ -232,21 +235,67 @@ server <- function(input, output, session) {
         legend.margin = (margin=margin(0,0,0,0)),
         legend.box = NULL,
         
-        panel.border = element_rect(colour = "#eeeeee", fill=NA, size=2),
+        panel.border = element_rect(colour = "#ffffff", fill=NA, size=2),
         panel.grid.major = element_line(colour = "#cbcbcb"),
         panel.grid.minor = element_line(colour = "#cbcbcb"),
         panel.grid.minor.x = element_line(colour = "#cbcbcb"),
         
         plot.title = element_text(hjust = 0, size = rel(1.3), face = "bold", colour = "#231f20"),
         plot.title.position = "plot",
-        strip.background = element_rect(colour="#eeeeee", fill="#eeeeee"),
+        strip.background = element_rect(colour="#ffffff", fill="#ffffff"),
         plot.subtitle = element_text(hjust = 0, margin=margin(0,0,40,0),size = rel(1), lineheight = 1),
         plot.caption = element_text(size = rel(0.75), hjust = 1, margin=margin(20,0,0,0), colour = "#555555", lineheight = 1),
-        plot.margin = unit(c(1, 1, 1, 0), "lines")
+        plot.margin = unit(c(1, 1, 1, 1), "lines")
       )
   )
   }
   
+  # Carimbo de fonte + data em todos os gráficos - importante para o gráfico
+  # não circular descontextualizado em prints. Sem botão de export de imagem
+  # (o rasterizador do plotly ignora o CSS da página e o resultado sai torto);
+  # o download oferecido é o dos DADOS filtrados (CSV), no card de filtros.
+  FONTE_STACK <- "Barlow, Arial, sans-serif"
+
+  fonte_plotly <- function(p) {
+    rodape <- paste0(
+      "Fonte: Observatório de Impulsionamento Eleitoral/Núcleo Jornalismo, com dados do TSE",
+      if (!is.null(ultima_atualizacao_data())) paste0("<br>Dados registrados no TSE até ", ultima_atualizacao_data()) else ""
+    )
+
+    p %>%
+      plotly::layout(
+        margin = list(b = 115),
+        font = list(family = FONTE_STACK),
+        xaxis = list(tickfont = list(family = FONTE_STACK), title = list(font = list(family = FONTE_STACK))),
+        yaxis = list(tickfont = list(family = FONTE_STACK), title = list(font = list(family = FONTE_STACK))),
+        annotations = list(list(
+          # ancorado em pixels abaixo do eixo (yshift), não em fração da altura:
+          # em gráficos altos a fração cai fora da margem e o rodapé some no export
+          x = 1, y = 0, xref = "paper", yref = "paper",
+          xanchor = "right", yanchor = "top", yshift = -80, align = "right",
+          text = rodape, showarrow = FALSE,
+          font = list(size = 11, color = "#777777", family = FONTE_STACK)
+        ))
+      ) %>%
+      plotly::config(
+        displaylogo = FALSE,
+        modeBarButtonsToRemove = list("toImage", "zoom2d", "pan2d", "select2d", "lasso2d",
+                                      "zoomIn2d", "zoomOut2d", "autoScale2d", "resetScale2d",
+                                      "hoverClosestCartesian", "hoverCompareCartesian", "toggleSpikelines")
+      )
+  }
+
+  # Download dos dados filtrados em CSV (padrão brasileiro: ";" e vírgula
+  # decimal, com BOM para o Excel abrir acentos corretamente)
+  output$download_dados <- downloadHandler(
+    filename = function() {
+      paste0("observatorio-impulsionamento-", input$ano_eleicao, "-", format(Sys.Date(), "%Y%m%d"), ".csv")
+    },
+    content = function(file) {
+      readr::write_excel_csv2(dados(), file)
+    }
+  )
+
   # Cache filter data - load once and reuse
   filter_cache <- reactiveVal(NULL)
 
@@ -502,14 +551,20 @@ server <- function(input, output, session) {
   # Data mais recente de registro no TSE (DT_PRESTACAO_CONTAS) para o ano
   # selecionado - é a data que vem nos próprios dados, não a hora do ETL.
   # (DT_DESPESA não serve: tem datas futuras digitadas errado nas prestações.)
-  output$ultima_atualizacao <- renderText({
+  ultima_atualizacao_data <- reactive({
     req(input$ano_eleicao)
     m <- dbGetQuery(pool, sprintf(
       "SELECT MAX(substr(DT_PRESTACAO_CONTAS,7,4) || '-' || substr(DT_PRESTACAO_CONTAS,4,2) || '-' || substr(DT_PRESTACAO_CONTAS,1,2)) AS m
        FROM despesas WHERE ANO_ELEICAO = %d AND length(DT_PRESTACAO_CONTAS) = 10",
       as.integer(input$ano_eleicao)))$m
-    if (is.null(m) || is.na(m)) return("")
-    paste0("Dados registrados no TSE até ", format(as_date(m), "%d/%m/%Y"))
+    if (is.null(m) || is.na(m)) return(NULL)
+    format(as_date(m), "%d/%m/%Y")
+  })
+
+  output$ultima_atualizacao <- renderText({
+    d <- ultima_atualizacao_data()
+    if (is.null(d)) return("")
+    paste0("Dados registrados no TSE até ", d)
   })
 
   ##########################################
@@ -585,7 +640,15 @@ server <- function(input, output, session) {
   output$graf_gastos <- renderPlotly({
     d <- dados()
     d$data_c <- as.POSIXct(d$`Data da despesa`,format="%d/%m/%Y")
-    
+
+    # Série histórica limitada ao período de campanha: começa em 15/ago (início
+    # da propaganda eleitoral) e vai até 1º/nov - ou até hoje, no ano corrente.
+    # Despesas contratadas fora dessa janela existem, mas não entram neste gráfico.
+    ano <- as.integer(input$ano_eleicao)
+    ini <- as.POSIXct(sprintf("%d-08-15", ano), tz = "UTC")
+    fim <- min(as.POSIXct(sprintf("%d-11-01", ano), tz = "UTC"), as.POSIXct(Sys.Date()))
+    d <- d %>% filter(data_c >= ini, data_c <= fim)
+
     if(input$valores == 'Contagem'){
       d <- d %>%
         group_by(data_c) %>%
@@ -612,6 +675,7 @@ server <- function(input, output, session) {
       geom_bar(aes(text = paste('<b>DATA:</b>', format(data_c, format = "%d/%m/%Y"),
                                 '<br><b>MONTANTE:</b>', format(round(n, 1), big.mark = ",", decimal.mark = "."))), stat = "identity", fill="#FF8C42") + 
       scale_x_datetime(
+        limits = c(ini, fim),
         breaks = scales::pretty_breaks(n = 6),
         labels = date_format("%d/%m\n%Y")) +
       # scale_y_continuous(
@@ -623,7 +687,7 @@ server <- function(input, output, session) {
     
     #graf <- plotly::ggplotly(graf)
     
-    ggplotly(graf, tooltip = "text")
+    fonte_plotly(ggplotly(graf, tooltip = "text"))
   })
   
   output$graf_partidos <- renderPlotly({
@@ -668,7 +732,7 @@ server <- function(input, output, session) {
       coord_flip()
     
     #graf <- plotly::ggplotly(graf)
-    ggplotly(graf, tooltip = "text")
+    fonte_plotly(ggplotly(graf, tooltip = "text"))
     
   })
   
@@ -717,7 +781,7 @@ server <- function(input, output, session) {
       coord_flip()
     
     #graf <- plotly::ggplotly(graf)
-    ggplotly(graf, tooltip = "text")
+    fonte_plotly(ggplotly(graf, tooltip = "text"))
     
   })
   
@@ -756,7 +820,7 @@ server <- function(input, output, session) {
       tema() +
       coord_flip()
 
-    ggplotly(graf, tooltip = "text")
+    fonte_plotly(ggplotly(graf, tooltip = "text"))
 
   })
 
@@ -803,7 +867,7 @@ server <- function(input, output, session) {
       labs + 
       tema() + coord_flip() + theme(legend.position = "none")
     
-    ggplotly(graf, tooltip = "text")
+    fonte_plotly(ggplotly(graf, tooltip = "text"))
     
   })
   
@@ -841,7 +905,7 @@ server <- function(input, output, session) {
       labs  + tema() + theme(axis.text.y = element_text(size = rel(0.5), margin=margin(0,40,0,0))) + coord_flip() + expand_limits(x = 0)
     
     #graf <- plotly::ggplotly(graf)
-    ggplotly(graf, tooltip = "text") %>% layout(height = 650)
+    fonte_plotly(ggplotly(graf, tooltip = "text")) %>% layout(height = 650)
     
   })
   
@@ -891,7 +955,7 @@ server <- function(input, output, session) {
       coord_flip()
     
     #graf <- plotly::ggplotly(graf)
-    ggplotly(graf, tooltip = "text") %>% layout(height = 650)
+    fonte_plotly(ggplotly(graf, tooltip = "text")) %>% layout(height = 650)
     
   })
   
