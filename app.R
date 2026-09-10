@@ -47,14 +47,16 @@ ui <- dashboardPage(
     fluidRow(
       column(6, offset = 3,
              tags$div(class="warning",
-                      tags$p("⚠️ As descrições de impulsionamento são autodeclaradas e muitas vezes não é possível determinar o destino dos gastos sob essas rubricas. Veja as notas abaixo para esclarecimentos.")
-             ),
-             tags$div(class = "update-note", textOutput("ultima_atualizacao"))
+                      tags$p("⚠️ As descrições de impulsionamento são autodeclaradas e muitas vezes não é possível determinar o destino dos gastos sob essas rubricas. Veja as notas abaixo para esclarecimentos."),
+                      tags$p(class = "update-note", icon("clock", class = "icons"), textOutput("ultima_atualizacao", inline = TRUE))
+             )
       )
     ),
     fluidRow(
+      column(4, offset = 4, class = "col-eleicao", uiOutput('eleicao'))
+    ),
+    fluidRow(
       column(4, class = "col-filtros", tags$div(class = "filters-card",
-             column(6,uiOutput('eleicao')),
              column(6,uiOutput('estados')),
              column(6,uiOutput('mun')),
              column(6,uiOutput('legenda')),
@@ -63,16 +65,12 @@ ui <- dashboardPage(
              column(6,uiOutput('turno')),
              column(6,
                     textInput(inputId = "valor_custom",
-                              label = tags$div(icon("money-bill", class = "icons"),
-                                               'Valor mínimo', tags$br(),
-                                               tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Filtre por valor")),
+                              label = tags$div(icon("money-bill", class = "icons"), 'Valor mínimo'),
                               value = "",
                               placeholder = "Apenas números")),
              column(6,
                     selectInput(inputId = "rede",
-                                label = tags$div(icon("share-alt-square", class = "icons"),
-                                                 'Redes', tags$br(),
-                                                 tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Selecione uma rede")),
+                                label = tags$div(icon("share-alt-square", class = "icons"), 'Redes'),
                                 choices = c("Todas", 
                                             "Meta (Facebook, Instagram e WhatsApp)" = "Meta", 
                                             "Google e YouTube" = "Google", 
@@ -81,13 +79,14 @@ ui <- dashboardPage(
                                 selected = "Todas"
                     )
              ),
-             column(12, uiOutput('periodo')),
+             # Filtro de datas oculto por decisão editorial (set/2026). Para
+             # reativar, basta descomentar - o render do server e o
+             # build_where_clause voltam a funcionar sozinhos.
+             # column(12, uiOutput('periodo')),
              column(12, style="margin-top:20px",
                     prettyRadioButtons(inputId = "valores",
-                                       label = tags$div(icon("line-chart", class = "icons"),
-                                                        '',tags$br(),
-                                                        tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "")),
-                                       choices = c("Ver gráficos em valores R$" = "Valores R$", "Ver gráficos em número de gastos" = "Contagem"),
+                                       label = tags$div(icon("line-chart", class = "icons"), style="visibility:hidden"),
+                                       choices = c("Gráficos em R$" = "Valores R$", "Gráficos em nº de registros" = "Contagem"),
                                        shape = c("curve"),
                                        fill = TRUE,
                                        inline = TRUE,
@@ -390,8 +389,7 @@ server <- function(input, output, session) {
     filters <- filter_cache()
 
     selectizeInput(inputId = "ano_eleicao",
-                   label = tags$div(icon("calendar-check", class = "icons"),
-                                    'Eleição', tags$br(), tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Escolha um ano")),
+                   label = tags$div(icon("calendar-check", class = "icons"), 'Eleição'),
                    choices  = filters$anos,
                    selected = max(filters$anos))
   })
@@ -402,9 +400,7 @@ server <- function(input, output, session) {
     filters <- filter_cache()
 
     dateRangeInput(inputId = "data",
-                   label = tags$div(icon("calendar", class = "icons"),
-                                    'Datas (dd/mm/aa)',tags$br(),
-                                    tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Selecione um período")),
+                   label = tags$div(icon("calendar", class = "icons"), 'Datas (dd/mm/aa)'),
                    start = filters$data_min,  end = filters$data_max,
                    min = filters$data_min,    max = Sys.Date(),
                    format = "dd/mm/yyyy", weekstart = 0,
@@ -418,8 +414,7 @@ server <- function(input, output, session) {
     filters <- filter_cache()
 
     selectizeInput(inputId = "mun",
-                   label = tags$div(icon("map-marker-alt", class = "icons"),
-                                    'Município - UF', tags$br(), tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Escolha um município")),
+                   label = tags$div(icon("map-marker-alt", class = "icons"), 'Município - UF'),
                    choices  = c("Todos", filters$municipios),
                    selected = "Todos",
                    options = list(maxOptions = 5000))
@@ -431,8 +426,7 @@ server <- function(input, output, session) {
     filters <- filter_cache()
 
     selectizeInput(inputId = "uf",
-                   label = tags$div(icon("map-marker-alt", class = "icons"),
-                                    'UF', tags$br(), tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Selecione uma UF")),
+                   label = tags$div(icon("map-marker-alt", class = "icons"), 'UF'),
                    choices  = c("Todas", filters$ufs),
                    selected = "Todas")
   })
@@ -442,8 +436,7 @@ server <- function(input, output, session) {
     filters <- filter_cache()
 
     selectizeInput(inputId = "partido",
-                   label = tags$div(icon("paste", class = "icons"),
-                                    'Partidos', tags$br(), tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Escolha um partido")),
+                   label = tags$div(icon("paste", class = "icons"), 'Partidos'),
                    choices  = c("Todos", filters$partidos),
                    selected = "Todos")
   })
@@ -453,8 +446,7 @@ server <- function(input, output, session) {
     filters <- filter_cache()
 
     selectizeInput(inputId = "turno",
-                   label = tags$div(icon("suitcase", class = "icons"),
-                                    'Turno', tags$br(), tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Selecione um turno")),
+                   label = tags$div(icon("suitcase", class = "icons"), 'Turno'),
                    choices  = c("Todos", filters$turnos),
                    selected = "Todos")
   })
@@ -464,8 +456,7 @@ server <- function(input, output, session) {
     filters <- filter_cache()
 
     selectizeInput(inputId = "cargo",
-                   label = tags$div(icon("suitcase", class = "icons"),
-                                    'Cargo', tags$br(), tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Escolha um ou mais cargos")),
+                   label = tags$div(icon("suitcase", class = "icons"), 'Cargo'),
                    choices  = c("Todos", filters$cargos),
                    selected = "Todos")
   })
@@ -473,8 +464,7 @@ server <- function(input, output, session) {
   # Server-side selectize for candidates (39K+ options)
   output$politicos <- renderUI({
     selectizeInput(inputId = "politico",
-                   label = tags$div(icon("user", class = "icons"),
-                                    'Candidato', tags$br(), tags$span(style="font-weight:300;font-size:0.7em;line-height:1.3em", "Escolha um candidato")),
+                   label = tags$div(icon("user", class = "icons"), 'Candidato'),
                    choices  = NULL,
                    selected = NULL,
                    multiple = FALSE,

@@ -91,16 +91,27 @@ tspan {
 
 .warning {
   margin: 16px auto 8px;
-  text-align: center;
+  text-align: left;
   max-width: 100%;
   padding: 18px 20px;
 }
 
-.update-note {
-  text-align: center;
+/* nota "Dados registrados no TSE até..." dentro do callout de warning */
+.warning .update-note {
   font-size: 0.85em;
   color: #555555;
-  margin: 0 0 16px;
+  margin: 10px 0 0;
+}
+
+/* seletor de eleição no topo, centralizado, abaixo do warning */
+.col-eleicao {
+  text-align: center;
+  margin-bottom: 14px;
+}
+.col-eleicao .control-label {
+  float: none;
+  display: inline-block;
+  margin: 0 0 6px 0 !important;
 }
 
 /* The card classes live on an inner div, not on the col-sm-* itself: side margins
@@ -147,9 +158,9 @@ tspan {
   border-radius: var(--card-radius);
   box-shadow: var(--card-shadow);
   overflow: hidden;
-  /* 3 rows of boxes visually match the filters-card height beside them */
-  min-height: 185px;
+  min-height: 110px;
   display: flex;
+  margin-bottom: 15px;
 }
 
 .kpi-row .small-box > .inner {
@@ -166,17 +177,27 @@ tspan {
 }
 
 .kpi-row .inner > p {
-  font-size: 1.05em;
+  font-size: 0.95em;
   font-weight: 400;
+  margin-bottom: 0;
 }
 
 .kpi-row .inner > h3 {
-  font-size: 2.4em;
+  font-size: 1.9em;
   font-weight: 700;
+  margin: 0 0 4px;
 }
 
 .kpi-row .icon-large, .kpi-row .small-box-footer {
   color: rgba(255,255,255,0.5);
+}
+
+/* ícone menor e mais discreto que o padrão do AdminLTE (90px) */
+.kpi-row .small-box .icon-large {
+  font-size: 42px;
+  top: auto;
+  bottom: 8px;
+  right: 12px;
 }
 
 .shiny-text-output { display: inline; }
@@ -192,7 +213,7 @@ tspan {
 
 .control-label {
   float: left;
-  margin: 0 20px 10px 0 !important;
+  margin: 20px 0 0 0 !important;
 }
 
 #valor_custom,
