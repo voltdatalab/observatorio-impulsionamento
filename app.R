@@ -57,6 +57,15 @@ ui <- dashboardPage(
     ),
     fluidRow(
       column(4, class = "col-filtros", tags$div(class = "filters-card",
+             column(12,
+                    selectInput(inputId = "origem",
+                                label = tags$div(icon("filter", class = "icons"),
+                                                 tags$span(style="font-weight:300;font-size:0.75em;line-height:1.45em;display:block;margin-top:4px",
+                                                           '"Busca ampla" joga uma rede maior para tentar encontrar impulsionamentos que não foram marcados na rubrica correta, mas pode incluir outros tipos de gastos. Ao selecionar "Apenas Despesa com Impulsionamento de Conteúdos", o usuário força o filtro de busca apenas a essa rubrica.'),tags$br()),
+                                choices = c("Busca ampla" = "ampla",
+                                            "Apenas Despesa com Impulsionamento de Conteúdos" = "rubrica"),
+                                selected = "ampla")
+             ),
              column(6,uiOutput('estados')),
              column(6,uiOutput('mun')),
              column(6,uiOutput('legenda')),
@@ -98,11 +107,13 @@ ui <- dashboardPage(
 
       )),
       column(8, class = "kpi-row",
-        valueBox(textOutput("n_gastos"), "nº total de rubricas de \"impulsionamento\"", icon = icon("list-alt"), width = 6),
-        valueBox(textOutput("n_candidatos"), "candidatos impulsionaram conteúdo", icon = icon("users"), width = 6),
-        valueBox(textOutput("total_gasto"), "volume gasto com rubrica \"impulsionamento\"", icon = icon("money-bill"), width = 6),
-        valueBox(textOutput("media_gasto"), "foi a média dos gastos", icon = icon("grip-lines"), width = 6),
-        valueBox(textOutput("maior_gasto"), "foi o maior gasto", icon = icon("sort-up"), width = 6),
+        # dois "heros" em largura total; os demais em grade 2x2 - a coluna de
+        # KPIs fica da altura do card de filtros, sem gap embaixo
+        valueBox(textOutput("total_gasto"), "é o volume total gasto com rubrica impulsionamento", icon = icon("money-bill"), width = 12),
+        valueBox(textOutput("n_candidatos"), "é o número de candidatos que impulsionaram conteúdo", icon = icon("users"), width = 12),
+        valueBox(textOutput("n_gastos"), "nº total de rubricas de impulsionamento", icon = icon("list-alt"), width = 6),
+        valueBox(textOutput("media_gasto"), "foi a média dos gastos com impulsionamento", icon = icon("grip-lines"), width = 6),
+        valueBox(textOutput("maior_gasto"), "foi o maior gasto com impulsionamento", icon = icon("sort-up"), width = 6),
         valueBox(textOutput("pct_impulsionamento"), "do total gasto pelas campanhas foi com impulsionamento", icon = icon("percent"), width = 6)
       )
     ),
@@ -381,6 +392,13 @@ server <- function(input, output, session) {
     # Rede social filter
     if (!is.null(input$rede) && input$rede != "Todas") {
       where_parts <- c(where_parts, sprintf("rede_social_mae LIKE '%%%s%%'", gsub("'", "''", input$rede)))
+    }
+
+    # Origem da despesa: "rubrica" restringe à rubrica oficial do TSE; o default
+    # ("ampla") mantém a rede maior por fornecedor/descrição (grafia idêntica
+    # nos 3 anos, verificado em set/2026)
+    if (!is.null(input$origem) && input$origem == "rubrica") {
+      where_parts <- c(where_parts, "DS_ORIGEM_DESPESA = 'Despesa com Impulsionamento de Conteúdos'")
     }
 
     if (length(where_parts) > 0) {
