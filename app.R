@@ -27,6 +27,15 @@ ui <- dashboardPage(
     tags$head(
       tags$script(src = "resizer.js"),
       tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
+      # Workaround selectize: na instância recriada pelo updateSelectizeInput
+      # (busca server-side de candidato), o input de digitação fica preso em
+      # isInputHidden=true e as teclas não entram. Garante showInput() ao focar.
+      tags$script(HTML("
+        $(document).on('focusin click', '#politico + .selectize-control .selectize-input', function() {
+          var el = document.getElementById('politico');
+          if (el && el.selectize && el.selectize.isInputHidden) el.selectize.showInput();
+        });
+      "))
     ),
     # add_busy_spinner(
     #   spin = "double-bounce",
@@ -363,8 +372,9 @@ server <- function(input, output, session) {
       parts <- c(parts, sprintf("ST_TURNO = %s", input$turno))
     }
 
-    # Candidato filter
-    if (!is.null(input$politico) && input$politico != "Todos") {
+    # Candidato filter ("" acontece transitoriamente enquanto o selectize
+    # server-side recarrega após troca de ano - não pode virar filtro)
+    if (!is.null(input$politico) && !input$politico %in% c("Todos", "")) {
       parts <- c(parts, sprintf("NM_CANDIDATO = '%s'", gsub("'", "''", input$politico)))
     }
 
@@ -541,29 +551,27 @@ server <- function(input, output, session) {
                    ))
   })
 
-  # Server-side search for candidates (loads on demand)
-  updateSelectizeInput(session, "politico",
-    choices = c("Todos" = "Todos"),
-    server = TRUE,
-    options = list(
-      load = I('function(query, callback) {
-        if (!query.length) return callback();
-        Shiny.setInputValue("candidate_search", query, {priority: "event"});
-      }')
-    )
-  )
-
-  # Handle candidate search
-  observeEvent(input$candidate_search, {
-    query <- input$candidate_search
-    if (!is.null(query) && nchar(query) >= 2) {
-      results <- dbGetQuery(pool, sprintf(
-        "SELECT DISTINCT NM_CANDIDATO FROM despesas WHERE NM_CANDIDATO LIKE '%%%s%%' ORDER BY NM_CANDIDATO LIMIT 50",
-        gsub("'", "''", query)
-      ))
-      choices <- c("Todos", results$NM_CANDIDATO)
-      updateSelectizeInput(session, "politico", choices = choices, server = TRUE)
-    }
+  # Busca server-side NATIVA do Shiny (server = TRUE): o cliente manda a query
+  # a cada tecla e o Shiny filtra em R - sem load() customizado, que recriava o
+  # campo no meio da digitação e quebrava a busca. A lista é só do ano
+  # selecionado (troca de ano recarrega e volta para "Todos").
+  observeEvent(input$ano_eleicao, {
+    nomes <- dbGetQuery(pool, sprintf(
+      "SELECT DISTINCT NM_CANDIDATO FROM despesas WHERE ANO_ELEICAO = %d ORDER BY NM_CANDIDATO",
+      as.integer(input$ano_eleicao)))$NM_CANDIDATO
+    updateSelectizeInput(session, "politico",
+                         choices = c("Todos", nomes), selected = "Todos",
+                         server = TRUE,
+                         options = list(placeholder = 'Digite 3 ou mais letras...',
+                                        maxOptions = 50,
+                                        # gate de 3+ caracteres via score: abaixo disso nada é
+                                        # exibido (o selectize 0.15.2 do Shiny NÃO suporta a
+                                        # opção shouldLoad, então o gate é só na exibição)
+                                        score = I('function(search) {
+                                          var scorer = this.getScoreFunction(search);
+                                          if (search.length > 0 && search.length < 3) return function() { return 0; };
+                                          return scorer;
+                                        }')))
   })
 
   # Data mais recente de registro no TSE (DT_PRESTACAO_CONTAS) para o ano
