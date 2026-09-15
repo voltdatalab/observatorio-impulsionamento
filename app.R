@@ -815,6 +815,8 @@ server <- function(input, output, session) {
     d <- dados()
     # 2022 rows never had rede_social_mae computed (NULL); show them honestly
     d$rede <- coalesce(d$`Rede social`, "Não informado")
+    # X (Twitter) fora do gráfico (valores residuais); segue nos dados/CSV
+    d <- d %>% filter(rede != "X (Twitter)")
 
     if(input$valores == 'Contagem'){
       d <- d %>%
