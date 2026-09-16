@@ -89,11 +89,12 @@ ui <- dashboardPage(
              column(6,
                     selectInput(inputId = "rede",
                                 label = tags$div(icon("share-alt-square", class = "icons"), 'Redes'),
-                                choices = c("Todas", 
-                                            "Meta (Facebook, Instagram e WhatsApp)" = "Meta", 
-                                            "Google e YouTube" = "Google", 
-                                            "ByteDance (TikTok)" = "ByteDance", 
-                                            "Kwai"),
+                                choices = c("Todas",
+                                            "Meta (Facebook, Instagram e WhatsApp)" = "Meta",
+                                            "Google e YouTube" = "Google",
+                                            "ByteDance (TikTok)" = "ByteDance",
+                                            "Kwai",
+                                            "X (Twitter)" = "X (Twitter)"),
                                 selected = "Todas"
                     )
              ),
@@ -815,8 +816,6 @@ server <- function(input, output, session) {
     d <- dados()
     # 2022 rows never had rede_social_mae computed (NULL); show them honestly
     d$rede <- coalesce(d$`Rede social`, "Não informado")
-    # X (Twitter) fora do gráfico (valores residuais); segue nos dados/CSV
-    d <- d %>% filter(rede != "X (Twitter)")
 
     if(input$valores == 'Contagem'){
       d <- d %>%
