@@ -57,7 +57,9 @@ if (length(missing) > 0) {
 # \\bX BRASIL: fronteira de palavra para não casar "EBANX BRASIL" (processador
 # de pagamento) - o X real entra como "X BRASIL..." no início do nome.
 # "TIK TOK" (com espaço) aparece assim em DS_DESPESA de prestações reais.
-PLATAFORMAS <- "FACEBOOK|YOUTUBE|INSTAGRAM|TIKTOK|TIK TOK|BYTEDANCE|GOOGLE|KWAI|META|WHATSAPP|X CORP|TWITTER|\\bX BRASIL|JOYO TECNOLOGIA"
+# (?i:...) só nas variantes de TikTok: prestações trazem "Tik tok", "TIK TOK"
+# etc. em caixa mista; case-insensitive geral seria perigoso (ex.: "meta")
+PLATAFORMAS <- "FACEBOOK|YOUTUBE|INSTAGRAM|(?i:TIKTOK|TIK TOK|TOKTOK|TOK TOK)|BYTEDANCE|GOOGLE|KWAI|META|WHATSAPP|X CORP|TWITTER|\\bX BRASIL|JOYO TECNOLOGIA"
 
 d <- raw %>%
   filter(
@@ -74,10 +76,10 @@ d <- d %>%
       str_detect(NM_FORNECEDOR_RFB, "META|FACEBOOK|INSTAGRAM|WHATSAPP|THREADS") |
       str_detect(DS_DESPESA, "META|FACEBOOK|INSTAGRAM|WHATSAPP") |
       str_detect(DS_ORIGEM_DESPESA, "META|FACEBOOK|INSTAGRAM|WHATSAPP") ~ "Meta",
-    str_detect(NM_FORNECEDOR, "BYTEDANCE|TIKTOK|TIK TOK") |
-      str_detect(NM_FORNECEDOR_RFB, "BYTEDANCE|TIKTOK|TIK TOK") |
-      str_detect(DS_DESPESA, "BYTEDANCE|TIKTOK|TIK TOK") |
-      str_detect(DS_ORIGEM_DESPESA, "BYTEDANCE|TIKTOK|TIK TOK") ~ "ByteDance",
+    str_detect(NM_FORNECEDOR, "BYTEDANCE|(?i:TIKTOK|TIK TOK|TOKTOK|TOK TOK)") |
+      str_detect(NM_FORNECEDOR_RFB, "BYTEDANCE|(?i:TIKTOK|TIK TOK|TOKTOK|TOK TOK)") |
+      str_detect(DS_DESPESA, "BYTEDANCE|(?i:TIKTOK|TIK TOK|TOKTOK|TOK TOK)") |
+      str_detect(DS_ORIGEM_DESPESA, "BYTEDANCE|(?i:TIKTOK|TIK TOK|TOKTOK|TOK TOK)") ~ "ByteDance",
     str_detect(NM_FORNECEDOR, "JOYO|KWAI") |
       str_detect(NM_FORNECEDOR_RFB, "JOYO|KWAI") |
       str_detect(DS_DESPESA, "JOYO|KWAI") |
