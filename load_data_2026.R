@@ -54,7 +54,10 @@ if (length(missing) > 0) {
        ". Update the column list in load_data_2026.R before proceeding.")
 }
 
-PLATAFORMAS <- "FACEBOOK|YOUTUBE|INSTAGRAM|TIKTOK|BYTEDANCE|GOOGLE|KWAI|META|WHATSAPP|X CORP|TWITTER|JOYO TECNOLOGIA"
+# \\bX BRASIL: fronteira de palavra para não casar "EBANX BRASIL" (processador
+# de pagamento) - o X real entra como "X BRASIL..." no início do nome.
+# "TIK TOK" (com espaço) aparece assim em DS_DESPESA de prestações reais.
+PLATAFORMAS <- "FACEBOOK|YOUTUBE|INSTAGRAM|TIKTOK|TIK TOK|BYTEDANCE|GOOGLE|KWAI|META|WHATSAPP|X CORP|TWITTER|\\bX BRASIL|JOYO TECNOLOGIA"
 
 d <- raw %>%
   filter(
@@ -71,10 +74,10 @@ d <- d %>%
       str_detect(NM_FORNECEDOR_RFB, "META|FACEBOOK|INSTAGRAM|WHATSAPP|THREADS") |
       str_detect(DS_DESPESA, "META|FACEBOOK|INSTAGRAM|WHATSAPP") |
       str_detect(DS_ORIGEM_DESPESA, "META|FACEBOOK|INSTAGRAM|WHATSAPP") ~ "Meta",
-    str_detect(NM_FORNECEDOR, "BYTEDANCE|TIKTOK") |
-      str_detect(NM_FORNECEDOR_RFB, "BYTEDANCE|TIKTOK") |
-      str_detect(DS_DESPESA, "BYTEDANCE|TIKTOK") |
-      str_detect(DS_ORIGEM_DESPESA, "BYTEDANCE|TIKTOK") ~ "ByteDance",
+    str_detect(NM_FORNECEDOR, "BYTEDANCE|TIKTOK|TIK TOK") |
+      str_detect(NM_FORNECEDOR_RFB, "BYTEDANCE|TIKTOK|TIK TOK") |
+      str_detect(DS_DESPESA, "BYTEDANCE|TIKTOK|TIK TOK") |
+      str_detect(DS_ORIGEM_DESPESA, "BYTEDANCE|TIKTOK|TIK TOK") ~ "ByteDance",
     str_detect(NM_FORNECEDOR, "JOYO|KWAI") |
       str_detect(NM_FORNECEDOR_RFB, "JOYO|KWAI") |
       str_detect(DS_DESPESA, "JOYO|KWAI") |
@@ -83,10 +86,12 @@ d <- d %>%
       str_detect(NM_FORNECEDOR_RFB, "GOOGLE|YOUTUBE") |
       str_detect(DS_DESPESA, "GOOGLE|YOUTUBE") |
       str_detect(DS_ORIGEM_DESPESA, "GOOGLE|YOUTUBE") ~ "Google",
-    str_detect(NM_FORNECEDOR, "X CORP|TWITTER") |
-      str_detect(NM_FORNECEDOR_RFB, "X CORP|TWITTER|X BRASIL") |
-      str_detect(DS_DESPESA, "X CORP|TWITTER|X BRASIL") |
-      str_detect(DS_ORIGEM_DESPESA, "X CORP|TWITTER|X BRASIL") ~ "X (Twitter)",
+    # \\bX BRASIL: nao casa "EBANX BRASIL" (o X vem colado no N); casa o
+    # fornecedor real "X BRASIL ..." com o X no inicio de palavra
+    str_detect(NM_FORNECEDOR, "X CORP|TWITTER|\\bX BRASIL") |
+      str_detect(NM_FORNECEDOR_RFB, "X CORP|TWITTER|\\bX BRASIL") |
+      str_detect(DS_DESPESA, "X CORP|TWITTER|\\bX BRASIL") |
+      str_detect(DS_ORIGEM_DESPESA, "X CORP|TWITTER|\\bX BRASIL") ~ "X (Twitter)",
     TRUE ~ "Não informado"
   ))
 

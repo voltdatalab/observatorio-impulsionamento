@@ -23,6 +23,10 @@
 
 set -euo pipefail
 
+# Ambientes de cron vêm sem locale; em locale C o R não converte os acentos
+# do CSV latin1 do TSE e o read.csv aborta com "invalid input"
+export LC_ALL="${LC_ALL:-en_US.UTF-8}"
+
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG_DIR="${ETL_LOG_DIR:-$APP_DIR/logs}"
 RSCRIPT="$(command -v Rscript)"
