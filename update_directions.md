@@ -50,15 +50,18 @@ app reads the same `.db` from a shared CapRover volume, so updating the file IS 
 - **`--replace`, not append**: TSE ships a full snapshot daily; replacing the year picks up
   amendments and deletions that append-with-dedup would miss. Replaces are transactional, so
   the app never sees a half-written year.
-- **Guards**: stops early (no DB write) when the snapshot is identical to what's in the DB
-  (rows + total R$); aborts without touching the DB if the snapshot shrank >20% (broken file).
+- **Guards**: stops early (no DB write) only when the snapshot is identical to what's in the DB
+  (rows + total R$) **and** the same Git revision already completed an ETL. A newer revision
+  reprocesses an unchanged snapshot so classifier/loader fixes reach SQLite; it aborts without
+  touching the DB if the snapshot shrank >20% (broken file).
 - **Env vars**: `OBS_DB_PATH` (where the shared `.db` lives; default `./obseleitoral.db`),
   `ETL_LOG_DIR` (default `<repo>/logs`).
 - **Scheduling**: cron inside the RStudio container, e.g.
   `30 9 * * * /home/rstudio/observatorio-impulsionamento/daily_etl.sh`
-  (TSE regenerates the zip early morning; 09:30 BRT is safe). Note: a crontab added by hand
-  dies when the container is rebuilt — bake the cron entry into the app's Dockerfile, or
-  re-add it after redeploys.
+  (TSE regenerates the zip early morning; 09:30 BRT is safe). `daily_etl.sh` itself does
+  `git pull --ff-only` before downloading, so the persisted cron line remains valid after
+  classifier/loader changes. The cron entry itself must still be baked into the image (or
+  re-added after a redeploy) because a hand-added crontab dies with the container.
 
 ## CSV Format Requirements
 

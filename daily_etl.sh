@@ -16,6 +16,8 @@
 #
 # Agendar via cron no container (ver update_directions.md):
 #   30 9 * * * /caminho/do/repo/daily_etl.sh
+# O próprio script faz `git pull --ff-only` antes do ETL. Isso mantém o cron
+# persistido na imagem independente de futuros ajustes do classificador.
 #
 # O download usa curl_cffi (python) impersonando o TLS do Chrome porque a Akamai
 # do cdn.tse.jus.br bloqueia o fingerprint do curl/httr. Requer python3 com
@@ -29,6 +31,7 @@ export LC_ALL="${LC_ALL:-en_US.UTF-8}"
 
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG_DIR="${ETL_LOG_DIR:-$APP_DIR/logs}"
+CODE_STATE="$LOG_DIR/etl_last_successful_code"
 RSCRIPT="$(command -v Rscript)"
 SQLITE="$(command -v sqlite3 || true)"
 ANO=2026
@@ -42,6 +45,14 @@ exec >> "$LOG" 2>&1
 
 echo "=== ETL $(date '+%Y-%m-%d %H:%M:%S') | db: $DB ==="
 cd "$APP_DIR"
+
+# O cron do container só chama este arquivo; mantenha o classificador e os
+# loaders em sincronia com a main sem depender de reconstruir a imagem.
+echo "--- Atualização do código"
+git -C "$APP_DIR" pull --ff-only
+CODE_REV="$(git -C "$APP_DIR" rev-parse HEAD)"
+LAST_CODE_REV="$(cat "$CODE_STATE" 2>/dev/null || true)"
+echo "código atual: $CODE_REV | último ETL concluído: ${LAST_CODE_REV:-nenhum}"
 
 TMPDIR_ETL=$(mktemp -d)
 trap 'rm -rf "$TMPDIR_ETL"' EXIT
@@ -93,9 +104,12 @@ NEW_ROWS=${NEW_SIG%%|*}
 CUR_ROWS=${CUR_SIG%%|*}
 echo "snapshot novo: $NEW_SIG | banco atual: $CUR_SIG"
 
-if [[ "$NEW_SIG" == "$CUR_SIG" ]]; then
+if [[ "$NEW_SIG" == "$CUR_SIG" && "$CODE_REV" == "$LAST_CODE_REV" ]]; then
   echo "Sem mudanças - nada a fazer."
   exit 0
+fi
+if [[ "$NEW_SIG" == "$CUR_SIG" ]]; then
+  echo "Snapshot igual, mas o código do ETL mudou; reprocessando classificação."
 fi
 if (( NEW_ROWS < CUR_ROWS * 8 / 10 )); then
   echo "ERRO: snapshot com ${NEW_ROWS} linhas, banco tem ${CUR_ROWS} (queda >20%). Abortando sem tocar no banco."
@@ -113,5 +127,11 @@ TSE_ZIP_PATH="$ZIP" "$RSCRIPT" load_totais.R "$ANO"
 if [[ -n "$SQLITE" ]]; then
   "$SQLITE" "$DB" "PRAGMA wal_checkpoint(TRUNCATE);"
 fi
+
+# Só registre a revisão depois que todo o replace/totais/checkpoint terminar.
+# Uma falha conserva a revisão anterior e força nova tentativa no próximo cron.
+STATE_TMP="$(mktemp "$LOG_DIR/.etl_last_successful_code.XXXXXX")"
+printf '%s\n' "$CODE_REV" > "$STATE_TMP"
+mv -f "$STATE_TMP" "$CODE_STATE"
 
 echo "=== OK $(date '+%Y-%m-%d %H:%M:%S') ==="
