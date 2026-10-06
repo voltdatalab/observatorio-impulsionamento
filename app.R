@@ -80,7 +80,7 @@ ui <- dashboardPage(
              column(6,uiOutput('legenda')),
              column(6,uiOutput('cargos')),
              column(6,uiOutput('politicos')),
-             column(6,uiOutput('turno')),
+             column(6,uiOutput('periodo')),
              column(6,
                     textInput(inputId = "valor_custom",
                               label = tags$div(icon("money-bill", class = "icons"), 'Valor mínimo'),
@@ -98,10 +98,6 @@ ui <- dashboardPage(
                                 selected = "Todas"
                     )
              ),
-             # Filtro de datas oculto por decisão editorial (set/2026). Para
-             # reativar, basta descomentar - o render do server e o
-             # build_where_clause voltam a funcionar sozinhos.
-             # column(12, uiOutput('periodo')),
              column(12, style="margin-top:20px",
                     prettyRadioButtons(inputId = "valores",
                                        label = tags$div(icon("line-chart", class = "icons"), style="visibility:hidden"),
@@ -330,7 +326,6 @@ server <- function(input, output, session) {
         municipios = dbGetQuery(pool, "SELECT DISTINCT mun_uf FROM despesas WHERE mun_uf IS NOT NULL ORDER BY mun_uf")$mun_uf,
         partidos = dbGetQuery(pool, "SELECT DISTINCT SG_PARTIDO FROM despesas ORDER BY SG_PARTIDO")$SG_PARTIDO,
         cargos = dbGetQuery(pool, "SELECT DISTINCT DS_CARGO FROM despesas ORDER BY DS_CARGO")$DS_CARGO,
-        turnos = dbGetQuery(pool, "SELECT DISTINCT ST_TURNO FROM despesas ORDER BY ST_TURNO")$ST_TURNO,
         data_min = as_date(periodo$min_d),
         data_max = as_date(periodo$max_d)
       ))
@@ -366,11 +361,6 @@ server <- function(input, output, session) {
     # Cargo filter
     if (!is.null(input$cargo) && input$cargo != "Todos") {
       parts <- c(parts, sprintf("DS_CARGO = '%s'", gsub("'", "''", input$cargo)))
-    }
-
-    # Turno filter
-    if (!is.null(input$turno) && input$turno != "Todos") {
-      parts <- c(parts, sprintf("ST_TURNO = %s", input$turno))
     }
 
     # Candidato filter ("" acontece transitoriamente enquanto o selectize
@@ -472,15 +462,22 @@ server <- function(input, output, session) {
                    selected = max(filters$anos))
   })
 
-  # Período (datas) filter - bounds derived live from the data, uses cached filter data
+  # Período (datas) - substitui o antigo filtro de turno: no TSE, ST_TURNO marca
+  # a PRESTAÇÃO (quem vai ao 2º turno consolida a campanha toda como turno 2),
+  # então filtrar por ele some com Lula/Bolsonaro do "1º turno" etc. Datas "de"
+  # e "até" inclusivas respondem a pergunta real. Limites são do ano selecionado,
+  # com teto em hoje (prestações trazem datas futuras digitadas erradas).
   output$periodo <- renderUI({
-    req(filter_cache())
-    filters <- filter_cache()
+    req(input$ano_eleicao)
+    lim <- dbGetQuery(pool, sprintf(
+      "SELECT MIN(dt_despesa_iso) AS a,
+              MAX(CASE WHEN dt_despesa_iso <= date('now') THEN dt_despesa_iso END) AS b
+       FROM despesas WHERE ANO_ELEICAO = %d", as.integer(input$ano_eleicao)))
 
     dateRangeInput(inputId = "data",
-                   label = tags$div(icon("calendar", class = "icons"), 'Datas (dd/mm/aa)'),
-                   start = filters$data_min,  end = filters$data_max,
-                   min = filters$data_min,    max = Sys.Date(),
+                   label = tags$div(icon("calendar", class = "icons"), 'Período (de - até)'),
+                   start = as_date(lim$a),  end = as_date(lim$b),
+                   min = as_date(lim$a),    max = as_date(lim$b),
                    format = "dd/mm/yyyy", weekstart = 0,
                    language = "pt",       separator = " ATÉ ",
                    width = NULL,          autoclose = TRUE)
@@ -516,16 +513,6 @@ server <- function(input, output, session) {
     selectizeInput(inputId = "partido",
                    label = tags$div(icon("paste", class = "icons"), 'Partidos'),
                    choices  = c("Todos", filters$partidos),
-                   selected = "Todos")
-  })
-
-  output$turno <- renderUI({
-    req(filter_cache())
-    filters <- filter_cache()
-
-    selectizeInput(inputId = "turno",
-                   label = tags$div(icon("suitcase", class = "icons"), 'Turno'),
-                   choices  = c("Todos", filters$turnos),
                    selected = "Todos")
   })
 
@@ -644,7 +631,7 @@ server <- function(input, output, session) {
   })
   
   # % do gasto total de campanha que foi para impulsionamento. Usa só os filtros
-  # de universo (ano/UF/município/partido/cargo/turno/candidato) - datas, rede e
+  # de universo (ano/UF/município/partido/cargo/candidato) - datas, rede e
   # valor mínimo não se aplicam à tabela `totais`, que é agregada por candidato.
   # GROUP BY SQ_DESPESA espelha o de-dup do reactive dados().
   output$pct_impulsionamento <- renderText({
