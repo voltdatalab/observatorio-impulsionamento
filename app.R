@@ -79,8 +79,10 @@ ui <- dashboardPage(
              column(6,uiOutput('mun')),
              column(6,uiOutput('legenda')),
              column(6,uiOutput('cargos')),
-             column(6,uiOutput('politicos')),
-             column(6,uiOutput('periodo')),
+             # candidato e período em linha própria (largura total): a altura
+             # do dateRange desalinha o grid de pares quando fica em col-6
+             column(12,uiOutput('politicos')),
+             column(12,uiOutput('periodo')),
              column(6,
                     textInput(inputId = "valor_custom",
                               label = tags$div(icon("money-bill", class = "icons"), 'Valor mínimo'),
